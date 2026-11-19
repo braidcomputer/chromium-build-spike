@@ -1,0 +1,13 @@
+name: bench
+on: workflow_dispatch
+jobs:
+  bench:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          if [ "$(uname)" = Darwin ]; then export CXX=clang++; fi
+          ci/bench.sh; ci/bench.sh

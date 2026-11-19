@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # One stage of the first build. usage: stage.sh <stage-number> <revision or empty>
 # Writes status=running|finished to $GITHUB_OUTPUT.
 set -uo pipefail
