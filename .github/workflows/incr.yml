@@ -1,0 +1,80 @@
+name: incr
+on:
+  workflow_dispatch:
+    inputs:
+      os: {required: true, default: ubuntu-latest}
+      state_run: {description: "run id holding the state-<os> artifact", required: true}
+      mode: {description: "artifact | checkout-out", required: true, default: artifact}
+      rev: {required: false, default: ""}
+      header: {description: "also rebuild after a header change (true/false)", required: false, default: "false"}
+      save_out: {description: "save out/ to actions cache (true/false)", required: false, default: "false"}
+run-name: incr ${{ inputs.os }} ${{ inputs.mode }} header=${{ inputs.header }}
+jobs:
+  incr:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v7
+      - run: . ci/lib.sh; hw
+      # --- mode artifact: whole src+out tree comes back from an artifact
+      - name: Download state artifact
+        if: inputs.mode == 'artifact'
+        uses: actions/download-artifact@v8
+        with:
+          name: state-${{ inputs.os }}
+          path: ~/cbs/pack
+          run-id: ${{ inputs.state_run }}
+          github-token: ${{ github.token }}
+      - name: Unpack state
+        if: inputs.mode == 'artifact'
+        run: . ci/lib.sh; du -sh $W/pack; unpack $W/pack; df -h $W
+      # --- mode checkout-out: fresh checkout, out/ from actions cache
+      - name: Fresh checkout
+        if: inputs.mode == 'checkout-out'
+        run: ci/setup.sh "${{ inputs.rev }}"
+      - name: Restore out from cache
+        if: inputs.mode == 'checkout-out'
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/cbs/outpack
+          key: out-${{ inputs.os }}-${{ inputs.rev }}
+          fail-on-cache-miss: true
+      - name: Unpack out
+        if: inputs.mode == 'checkout-out'
+        run: |
+          . ci/lib.sh; du -sh $W/outpack; unpack $W/outpack; du -sh $SRC/out/Default
+      - name: Dry run with fresh-checkout mtimes
+        if: inputs.mode == 'checkout-out'
+        run: ci/incr.sh dry
+      - name: Set source mtimes older than outputs
+        if: inputs.mode == 'checkout-out'
+        run: |
+          . ci/lib.sh; cd $SRC/..
+          time (find . -path ./src/out -prune -o \( -type f -o -type l \) -print0 | xargs -0 touch -h -t 202001010000)
+      # --- common
+      - name: Dry run (expect nothing to do)
+        run: ci/incr.sh dry
+      - name: No-op build
+        run: ci/incr.sh noop 60
+      - name: Rebuild after one .cc change
+        run: ci/incr.sh cc 300
+      - name: Pack out for cache
+        if: inputs.save_out == 'true'
+        run: |
+          . ci/lib.sh; du -sh $SRC/out/Default; ts packout_begin; pack $W/outpack chromium/src/out/Default; ts packout_end
+      - name: Save out to cache
+        if: inputs.save_out == 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/cbs/outpack
+          key: out-${{ inputs.os }}-${{ inputs.rev }}
+      - name: Rebuild after a widely included header change
+        if: inputs.header == 'true'
+        run: ci/incr.sh header 240
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-incr-${{ inputs.os }}-${{ inputs.mode }}
+          path: ~/cbs/logs/
+          retention-days: 30
