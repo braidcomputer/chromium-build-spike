@@ -1,0 +1,23 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  probe:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: |
+          uname -a
+          if [ "$(uname)" = Linux ]; then
+            nproc; lscpu | head -20; free -h; df -h; lsblk
+            openssl speed -seconds 3 sha256 2>&1 | tail -3
+            sudo du -sh /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/.ghcup /usr/share/swift /usr/local/share/powershell /usr/lib/jvm /opt/az /usr/local/share/chromium /opt/microsoft /opt/google 2>/dev/null
+            docker images
+          else
+            sysctl -n hw.ncpu hw.memsize machdep.cpu.brand_string; sysctl vm.swapusage; df -h; sw_vers
+            xcodebuild -version; ls /Applications | grep -i xcode
+            openssl speed -seconds 3 sha256 2>&1 | tail -3
+            du -sh $ANDROID_HOME ~/Library/Developer/CoreSimulator /Library/Developer/CoreSimulator 2>/dev/null
+            python3 --version; which gtar zstd gsplit gtimeout
+          fi
