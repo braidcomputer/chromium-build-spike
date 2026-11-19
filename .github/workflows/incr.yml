@@ -34,7 +34,7 @@ jobs:
         run: ci/setup.sh "${{ inputs.rev }}"
       - name: Restore out from cache
         if: inputs.mode == 'checkout-out'
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/cbs/outpack
           key: out-${{ inputs.os }}-${{ inputs.rev }}
@@ -64,7 +64,7 @@ jobs:
           . ci/lib.sh; du -sh $SRC/out/Default; ts packout_begin; pack $W/outpack chromium/src/out/Default; ts packout_end
       - name: Save out to cache
         if: inputs.save_out == 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/cbs/outpack
           key: out-${{ inputs.os }}-${{ inputs.rev }}
