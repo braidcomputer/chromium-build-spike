@@ -1,0 +1,28 @@
+name: siso-smoke
+on:
+  workflow_dispatch:
+    inputs:
+      os: {required: true, default: ubuntu-latest}
+      rev: {required: false, default: ""}
+      target: {required: false, default: base}
+jobs:
+  smoke:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install caches
+        run: |
+          if [ "$(uname)" = Linux ]; then sudo apt-get update -q; sudo apt-get install -y -q ccache sccache
+          else brew install ccache sccache; fi
+          ccache --version | head -1; sccache --version
+      - name: Checkout chromium
+        run: ci/setup.sh "${{ inputs.rev }}"
+      - name: Smoke
+        run: SMOKE_TARGET="${{ inputs.target }}" ci/siso-smoke.sh
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-siso-smoke-${{ inputs.os }}
+          path: ~/cbs/logs/
