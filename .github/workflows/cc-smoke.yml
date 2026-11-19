@@ -19,7 +19,7 @@ jobs:
       - name: Checkout chromium
         run: ci/setup.sh "${{ inputs.rev }}"
       - name: Smoke
-        run: TARGET="${{ inputs.target }}" ci/cc-smoke.sh
+        run: SMOKE_TARGET="${{ inputs.target }}" ci/cc-smoke.sh
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v7

@@ -3,7 +3,7 @@
 # Builds a small target cold then again from an empty out dir, per variant.
 set -uo pipefail
 . "$(dirname "$0")/lib.sh"
-TARGET=${TARGET:-base}
+SMOKE_TARGET=${SMOKE_TARGET:-base}
 cd "$SRC"
 BASE='is_debug=false symbol_level=0 blink_symbol_level=0'
 CCACHE=$(command -v ccache); SCCACHE=$(command -v sccache)
@@ -15,7 +15,7 @@ run(){ # run <name> <extra gn args>
     rm -rf out/S
     gn gen out/S --args="$BASE $args" >/dev/null || { echo "RESULT $name gn failed"; return; }
     local s=$(date +%s)
-    autoninja -C out/S "$TARGET" > "$LOGS/smoke-$name-$pass.log" 2>&1
+    autoninja -C out/S "$SMOKE_TARGET" > "$LOGS/smoke-$name-$pass.log" 2>&1
     local rc=$? e=$(date +%s)
     echo "RESULT $name $pass rc=$rc secs=$((e-s)) $(tail -5 "$LOGS/smoke-$name-$pass.log" | grep -E 'local:|Build' | tr '\n' ' ')"
     [ "$rc" = 0 ] || tail -30 "$LOGS/smoke-$name-$pass.log"
