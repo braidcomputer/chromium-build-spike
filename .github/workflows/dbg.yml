@@ -19,21 +19,25 @@ jobs:
           github-token: ${{ github.token }}
       - name: Unpack
         run: . ci/lib.sh; echo "TAR=$TAR"; $TAR --version | head -1; unpack $W/pack; df -h $W
-      - name: Why does mac_sysroot rerun in a new VM, and does it rerun twice in the same VM
+      - name: With SDK mtimes pinned, does a new VM resume without redoing work
         run: |
           . ci/lib.sh; cd $SRC; set +e
+          D=$(xcode-select -p)
+          sudo find "$D/Platforms/MacOSX.platform" "$D/Toolchains/XcodeDefault.xctoolchain" \( -type f -o -type l \) -exec touch -h -t 202001010000 {} + 2>&1 | tail -3
           SISO=third_party/siso/cipd/siso
-          H=out/Default/sdk/xcode_links/MacOSX*.sdk/usr/include/arpa/nameser.h
-          stat -f "disk mtime %Fm %N" $H
-          for i in 1 2; do
-            $SISO ninja --offline -C out/Default obj/build/modules/system/module.pcm > $LOGS/pcm$i.log 2>&1
-            echo "RUN$i $(grep -E '^noexec:|Build' $LOGS/pcm$i.log | tr '\n' ' ')"
-            echo "RUN$i explain: $(cut -c1-260 out/Default/siso_explain | head -3 | tr '\n' '|')"
-            echo "RUN$i siso.INFO lines on xcode_links: $(grep -c xcode_links out/Default/siso.INFO)"
-            grep xcode_links out/Default/siso.INFO | sed -E 's/^[^]]*\] //' | sed -E 's/[A-Za-z0-9_+.-]+\.h/X.h/g; s/[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9:.]+ [+-][0-9]+ [A-Z]+/TIME/g' | cut -c1-110 | sort | uniq -c | sort -rn | head -6
-            grep -m2 'arpa/nameser.h' out/Default/siso.INFO | cut -c1-420
-            grep -E 'eq:[0-9]+ new:' out/Default/siso.INFO | head -2 | cut -c1-300
-          done
+          stat -f "disk mtime %Fm %N" out/Default/sdk/xcode_links/MacOSX*.sdk/usr/include/arpa/nameser.h
+          stat -f "pcm before %Sm" out/Default/obj/build/modules/system/module.pcm
+          $SISO ninja --offline -C out/Default obj/build/modules/system/module.pcm > $LOGS/pcm.log 2>&1
+          echo "PCM $(grep -E '^noexec:|Build' $LOGS/pcm.log | tr '\n' ' ')"
+          echo "PCM explain: $(cut -c1-260 out/Default/siso_explain | head -3 | tr '\n' '|')"
+          grep -E 'eq:[0-9]+ new:' out/Default/siso.INFO | head -1 | cut -c1-300
+          stat -f "pcm after %Sm" out/Default/obj/build/modules/system/module.pcm
+          $SISO ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1
+          echo "DRY $(grep -E '^noexec:|Build' $LOGS/dry.log | tr '\n' ' ')"
+          echo "explain lines $(wc -l < out/Default/siso_explain) older-than $(grep -c 'older than' out/Default/siso_explain) missing-deps $(grep -c 'deps not found\|missing-deps' out/Default/siso_explain)"
+          sed -E 's/[^ ]+\.(o|pcm|h|cc)//g' out/Default/siso_explain | cut -c1-90 | sort | uniq -c | sort -rn | head -8
+          timeout 600 $SISO ninja --offline -C out/Default chrome > $LOGS/real10.log 2>&1
+          grep -aE '^\[[0-9]+/[0-9]+\] ' $LOGS/real10.log | sed -n '1p;$p' | cut -c1-80
       - uses: actions/upload-artifact@v7
         if: always()
         with:
