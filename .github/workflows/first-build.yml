@@ -4,7 +4,8 @@ on:
     inputs:
       os: {description: "runner label", required: true, default: ubuntu-latest}
       rev: {description: "chromium src revision (empty = main HEAD)", required: false, default: ""}
-run-name: first-build ${{ inputs.os }} ${{ inputs.rev }}
+      variant: {description: "plain | ccache", required: false, default: plain}
+run-name: first-build ${{ inputs.os }} ${{ inputs.variant }}
 jobs:
   s1:
     uses: ./.github/workflows/stage.yml
@@ -12,6 +13,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "1"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s2:
     needs: s1
     if: needs.s1.outputs.status == 'running'
@@ -20,6 +22,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "2"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s3:
     needs: s2
     if: needs.s2.outputs.status == 'running'
@@ -28,6 +31,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "3"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s4:
     needs: s3
     if: needs.s3.outputs.status == 'running'
@@ -36,6 +40,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "4"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s5:
     needs: s4
     if: needs.s4.outputs.status == 'running'
@@ -44,6 +49,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "5"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s6:
     needs: s5
     if: needs.s5.outputs.status == 'running'
@@ -52,6 +58,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "6"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s7:
     needs: s6
     if: needs.s6.outputs.status == 'running'
@@ -60,6 +67,7 @@ jobs:
       os: ${{ inputs.os }}
       stage: "7"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}
   s8:
     needs: s7
     if: needs.s7.outputs.status == 'running'
@@ -68,3 +76,4 @@ jobs:
       os: ${{ inputs.os }}
       stage: "8"
       rev: ${{ inputs.rev }}
+      variant: ${{ inputs.variant }}

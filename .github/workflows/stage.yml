@@ -5,6 +5,7 @@ on:
       os: {required: true, type: string}
       stage: {required: true, type: string}
       rev: {required: false, type: string, default: ""}
+      variant: {required: false, type: string, default: plain}
     outputs:
       status:
         value: ${{ jobs.stage.outputs.status }}
@@ -35,7 +36,7 @@ jobs:
           . ci/lib.sh; ts unpack_begin; ls -la $W/pack; unpack $W/pack; ts unpack_end; df -h $W
       - name: Build
         id: build
-        run: ci/stage.sh "${{ inputs.stage }}" "${{ inputs.rev }}"
+        run: VARIANT="${{ inputs.variant }}" ci/stage.sh "${{ inputs.stage }}" "${{ inputs.rev }}"
       - name: Upload state
         uses: actions/upload-artifact@v7
         with:
@@ -43,6 +44,14 @@ jobs:
           path: ~/cbs/pack/
           compression-level: 0
           overwrite: true
+          retention-days: 5
+      - name: Upload compiler cache
+        uses: actions/upload-artifact@v7
+        with:
+          name: ccache-${{ inputs.os }}
+          path: ~/cbs/ccpack/
+          compression-level: 0
+          if-no-files-found: ignore
           retention-days: 5
       - name: Upload logs
         if: always()

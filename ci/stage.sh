@@ -6,6 +6,15 @@ STAGE=$1; REV=${2:-}
 JOB_START=${JOB_START:-$(date +%s)}
 BUDGET_MIN=${BUDGET_MIN:-295}
 . "$(dirname "$0")/lib.sh"
+VARIANT=${VARIANT:-plain}
+GN_ARGS='is_debug=false symbol_level=0 blink_symbol_level=0'
+if [ "$VARIANT" = ccache ]; then
+  if [ "$OSN" = Linux ]; then sudo apt-get update -q >/dev/null; sudo apt-get install -y -q ccache >/dev/null; else brew install ccache >/dev/null; fi
+  export CCACHE_CONFIGPATH=$W/ccache.conf
+  [ -f "$CCACHE_CONFIGPATH" ] || printf 'cache_dir = %s/ccache\nmax_size = 9G\nsloppiness = modules,time_macros,include_file_mtime,include_file_ctime\ndepend_mode = true\ncompiler_check = %%compiler%% --version\n' "$W" > "$CCACHE_CONFIGPATH"
+  cat "$CCACHE_CONFIGPATH"; ccache --version | head -1
+  GN_ARGS="$GN_ARGS cc_wrapper=\"$(command -v ccache)\""
+fi
 ts "stage${STAGE}_begin"
 hw
 mon_start
@@ -51,7 +60,7 @@ G
   ts hooks_end
   du -sh "$W/chromium"; df -h "$W"
   ts gn_begin
-  gn gen out/Default --args='is_debug=false symbol_level=0 blink_symbol_level=0' || exit 1
+  gn gen out/Default --args="$GN_ARGS" || exit 1
   ts gn_end
 fi
 
@@ -77,8 +86,11 @@ else
   echo "status=failed" >> "$GITHUB_OUTPUT"
   echo "BUILD FAILED rc=$rc"
 fi
+PACK="chromium depot_tools"
+if [ "$VARIANT" = ccache ]; then ccache -s -v; du -sh "$W/ccache"; PACK="$PACK ccache ccache.conf"; fi
 ts pack_begin
-pack "$W/pack" chromium depot_tools
+pack "$W/pack" $PACK
+if [ "$VARIANT" = ccache ] && [ "$rc" = 0 ]; then pack "$W/ccpack" ccache ccache.conf; fi
 ts pack_end
 mon_stop
 echo "== monitor summary"

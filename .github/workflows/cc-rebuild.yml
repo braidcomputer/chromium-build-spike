@@ -1,0 +1,37 @@
+name: cc-rebuild
+on:
+  workflow_dispatch:
+    inputs:
+      os: {required: true, default: ubuntu-latest}
+      cache_run: {description: "run id holding the ccache-<os> artifact", required: true}
+      rev: {required: false, default: ""}
+run-name: cc-rebuild ${{ inputs.os }}
+jobs:
+  rebuild:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          . ci/lib.sh; hw
+          if [ "$(uname)" = Linux ]; then sudo apt-get update -q >/dev/null; sudo apt-get install -y -q ccache >/dev/null; else brew install ccache >/dev/null; fi
+      - name: Fresh checkout
+        run: ci/setup.sh "${{ inputs.rev }}"
+      - name: Download compiler cache
+        uses: actions/download-artifact@v8
+        with:
+          name: ccache-${{ inputs.os }}
+          path: ~/cbs/ccpack
+          run-id: ${{ inputs.cache_run }}
+          github-token: ${{ github.token }}
+      - name: Unpack compiler cache
+        run: . ci/lib.sh; du -sh $W/ccpack; unpack $W/ccpack
+      - name: Build with warm compiler cache
+        run: ci/cc-rebuild.sh 300
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-cc-rebuild-${{ inputs.os }}
+          path: ~/cbs/logs/
+          retention-days: 30
