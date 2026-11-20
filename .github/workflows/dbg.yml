@@ -22,17 +22,20 @@ jobs:
       - name: Why would it rebuild
         run: |
           . ci/lib.sh; cd $SRC; set +e
-          xcodebuild -version || true; xcode-select -p || true
-          ls -la out/Default | head -8
-          ls -la out/Default/.siso* out/Default/.ninja* 2>&1 || true
-          S=out/Default/obj/third_party/jsoncpp/jsoncpp/json_reader.o
-          if [ "$(uname)" = Darwin ]; then ST="stat -f %Fm_%N"; else ST="stat -c %.9Y_%n"; fi
-          $ST $S third_party/jsoncpp/source/src/lib_json/*.cpp base/base_switches.cc out/Default/obj/base/base/base_switches.o build/config/BUILDCONFIG.gn third_party/llvm-build/Release+Asserts/bin/clang out/Default/build.ninja out/Default/args.gn out/Default/toolchain.ninja 2>&1
-          third_party/siso/cipd/siso ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1 || true
-          grep -E '^noexec:|Build|up-to-date' $LOGS/dry.log
-          ls -la out/Default/siso_explain* 2>&1 || true
-          for f in out/Default/siso_explain; do [ -f $f ] && { wc -l $f; head -40 $f | cut -c1-400; echo; sed -E 's/^(output|deps for|command line|edge) [^ ]+ ?//; s/[0-9]+(\.[0-9]+)?(ms|µs|s|m|h)//g; s/out:[^ ]+//; s/most recent input [^ ]+/most recent input X/' $f | cut -c1-60 | sort | uniq -c | sort -rn | head -20; cp $f $LOGS/; }; done
-          grep -m5 -n 'need' out/Default/siso.INFO | cut -c1-400 || true
+          SISO=third_party/siso/cipd/siso
+          if [ "$(uname)" = Darwin ]; then ST="stat -f %Sm_%N"; else ST="stat -c %y_%n"; fi
+          echo "== before"; $ST out/Default/obj/build/modules/system/module.pcm out/Default/gen/build/modules/module.modulemap out/Default/sdk out/Default/sdk/xcode_links 2>&1
+          ls -la out/Default/sdk out/Default/sdk/xcode_links 2>&1 | head -20
+          echo "== real build of the system module only"
+          $SISO ninja --offline -C out/Default obj/build/modules/system/module.pcm > $LOGS/pcm.log 2>&1
+          grep -E ' [SF] |^noexec:|Build' $LOGS/pcm.log | cut -c1-200 | head -40
+          echo "== explain"; cut -c1-500 out/Default/siso_explain | head -40; cp out/Default/siso_explain $LOGS/explain-pcm
+          echo "== after"; $ST out/Default/obj/build/modules/system/module.pcm 2>&1
+          echo "== dry run of chrome after that"
+          $SISO ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1
+          grep -E '^noexec:|Build' $LOGS/dry.log
+          grep -c 'older than most recent input obj/build/modules/system/module.pcm' out/Default/siso_explain
+          cp out/Default/siso_explain $LOGS/explain-dry
       - uses: actions/upload-artifact@v7
         if: always()
         with:
