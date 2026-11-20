@@ -19,22 +19,22 @@ jobs:
           github-token: ${{ github.token }}
       - name: Unpack
         run: . ci/lib.sh; echo "TAR=$TAR"; $TAR --version | head -1; unpack $W/pack; df -h $W
-      - name: Why would it rebuild
+      - name: Does an old mtime on build/noop.py stop the rebuild
         run: |
           . ci/lib.sh; cd $SRC; set +e
           SISO=third_party/siso/cipd/siso
           if [ "$(uname)" = Darwin ]; then ST="stat -f %Sm_%N"; else ST="stat -c %y_%n"; fi
-          echo "== before"; $ST out/Default/obj/build/modules/system/module.pcm out/Default/gen/build/modules/module.modulemap out/Default/sdk out/Default/sdk/xcode_links 2>&1
-          ls -la out/Default/sdk out/Default/sdk/xcode_links 2>&1 | head -20
-          echo "== real build of the system module only"
+          $ST build/noop.py out/Default/obj/build/modules/system/module.pcm
+          touch -t 202001010000 build/noop.py
+          echo "== build of the system module only (want 0 steps)"
           $SISO ninja --offline -C out/Default obj/build/modules/system/module.pcm > $LOGS/pcm.log 2>&1
-          grep -E ' [SF] |^noexec:|Build' $LOGS/pcm.log | cut -c1-200 | head -40
-          echo "== explain"; cut -c1-500 out/Default/siso_explain | head -40; cp out/Default/siso_explain $LOGS/explain-pcm
-          echo "== after"; $ST out/Default/obj/build/modules/system/module.pcm 2>&1
-          echo "== dry run of chrome after that"
+          grep -E ' [SF] |^noexec:|Build' $LOGS/pcm.log | cut -c1-200 | head -20
+          cut -c1-400 out/Default/siso_explain | head -10
+          $ST out/Default/obj/build/modules/system/module.pcm
+          echo "== dry run of chrome"
           $SISO ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1
-          grep -E '^noexec:|Build' $LOGS/dry.log
-          grep -c 'older than most recent input obj/build/modules/system/module.pcm' out/Default/siso_explain
+          grep -E '^noexec:|Build' $LOGS/dry.log | cut -c1-200
+          echo "older-than lines: $(grep -c 'older than most recent input' out/Default/siso_explain); of which module.pcm: $(grep -c 'older than most recent input obj/build/modules/system/module.pcm' out/Default/siso_explain); missing deps: $(grep -c 'missing-deps' out/Default/siso_explain)"
           cp out/Default/siso_explain $LOGS/explain-dry
       - uses: actions/upload-artifact@v7
         if: always()
