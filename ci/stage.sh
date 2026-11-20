@@ -15,6 +15,7 @@ if [ "$VARIANT" = ccache ]; then
   cat "$CCACHE_CONFIGPATH"; ccache --version | head -1
   GN_ARGS="$GN_ARGS cc_wrapper=\"$(command -v ccache)\""
 fi
+if [ "$VARIANT" = nomodules ]; then GN_ARGS="$GN_ARGS use_clang_modules=false"; fi
 ts "stage${STAGE}_begin"
 hw
 mon_start
