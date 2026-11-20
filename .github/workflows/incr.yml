@@ -7,8 +7,9 @@ on:
       mode: {description: "artifact | checkout-out", required: true, default: artifact}
       rev: {required: false, default: ""}
       header: {description: "also rebuild after a header change (true/false)", required: false, default: "false"}
+      fix_mtimes: {description: "checkout-out: set source mtimes old (true/false)", required: false, default: "true"}
       save_out: {description: "save out/ to actions cache (true/false)", required: false, default: "false"}
-run-name: incr ${{ inputs.os }} ${{ inputs.mode }} header=${{ inputs.header }}
+run-name: incr ${{ inputs.os }} ${{ inputs.mode }} header=${{ inputs.header }} fix_mtimes=${{ inputs.fix_mtimes }}
 jobs:
   incr:
     runs-on: ${{ inputs.os }}
@@ -47,7 +48,7 @@ jobs:
         if: inputs.mode == 'checkout-out'
         run: ci/incr.sh dry
       - name: Set source mtimes older than outputs
-        if: inputs.mode == 'checkout-out'
+        if: inputs.mode == 'checkout-out' && inputs.fix_mtimes == 'true'
         run: |
           . ci/lib.sh; cd $SRC/..
           time (find . -path ./src/out -prune -o \( -type f -o -type l \) -print0 | xargs -0 touch -h -t 202001010000)
@@ -55,7 +56,7 @@ jobs:
       - name: Dry run (expect nothing to do)
         run: ci/incr.sh dry
       - name: No-op build
-        run: ci/incr.sh noop 60
+        run: ci/incr.sh noop 20
       - name: Rebuild after one .cc change
         run: ci/incr.sh cc 300
       - name: Pack out for cache
@@ -75,6 +76,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: logs-incr-${{ inputs.os }}-${{ inputs.mode }}
+          name: logs-incr-${{ inputs.os }}-${{ inputs.mode }}-${{ inputs.fix_mtimes }}
           path: ~/cbs/logs/
           retention-days: 30
