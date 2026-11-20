@@ -53,6 +53,8 @@ jobs:
           . ci/lib.sh; cd $SRC/..
           time (find . -path ./src/out -prune -o \( -type f -o -type l \) -print0 | xargs -0 touch -h -t 202001010000)
       # --- common
+      - name: Pin Xcode SDK mtimes (macOS; state must come from a sdkfix build)
+        run: . ci/lib.sh; time pin_sdk_mtimes
       - name: Dry run (expect nothing to do)
         run: ci/incr.sh dry
       - name: No-op build

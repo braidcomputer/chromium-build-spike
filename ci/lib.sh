@@ -72,3 +72,8 @@ save_build_logs(){ # copy small siso logs for later analysis
   done
   gzip -f "$LOGS/$tag"/siso_localexec 2>/dev/null || true
 }
+pin_sdk_mtimes(){ # macOS: give Xcode SDK/toolchain files one fixed mtime so Siso state stays valid on another runner VM
+  [ "$OSN" = Darwin ] || return 0
+  local D; D=$(xcode-select -p)
+  sudo find "$D/Platforms/MacOSX.platform" "$D/Toolchains/XcodeDefault.xctoolchain" \( -type f -o -type l \) -exec touch -h -t 202001010000 {} + 2>&1 | tail -3
+}

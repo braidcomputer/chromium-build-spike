@@ -18,8 +18,7 @@ fi
 if [ "$VARIANT" = sdkfix ] && [ "$OSN" = Darwin ]; then
   # Xcode SDK file mtimes differ between runner VMs; Siso then reruns //build/modules:mac_sysroot,
   # rebuilds the system module and with it every compile. Pin them to one fixed time in every stage.
-  D=$(xcode-select -p)
-  time sudo find "$D/Platforms/MacOSX.platform" "$D/Toolchains/XcodeDefault.xctoolchain" \( -type f -o -type l \) -exec touch -h -t 202001010000 {} + 2>&1 | tail -3
+  pin_sdk_mtimes
 fi
 if [ "$VARIANT" = nomodules ]; then GN_ARGS="$GN_ARGS use_clang_modules=false"; fi
 ts "stage${STAGE}_begin"
