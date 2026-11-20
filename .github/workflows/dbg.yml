@@ -1,0 +1,40 @@
+name: dbg
+on:
+  workflow_dispatch:
+    inputs:
+      os: {required: true, default: macos-latest}
+      state_run: {required: true}
+run-name: dbg ${{ inputs.os }} ${{ inputs.state_run }}
+jobs:
+  dbg:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: state-${{ inputs.os }}
+          path: ~/cbs/pack
+          run-id: ${{ inputs.state_run }}
+          github-token: ${{ github.token }}
+      - name: Unpack
+        run: . ci/lib.sh; echo "TAR=$TAR"; $TAR --version | head -1; unpack $W/pack; df -h $W
+      - name: Why would it rebuild
+        run: |
+          . ci/lib.sh; cd $SRC
+          xcodebuild -version || true; xcode-select -p || true
+          ls -la out/Default | head -40
+          ls -la out/Default/.siso* out/Default/.ninja* 2>&1 || true
+          S=out/Default/obj/third_party/jsoncpp/jsoncpp/json_reader.o
+          if [ "$(uname)" = Darwin ]; then ST="stat -f %Fm_%N"; else ST="stat -c %.9Y_%n"; fi
+          $ST $S third_party/jsoncpp/source/src/lib_json/json_reader.cpp out/Default/build.ninja out/Default/args.gn out/Default/toolchain.ninja 2>&1
+          third_party/siso/cipd/siso ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1 || true
+          grep -E '^noexec:|Build|up-to-date' $LOGS/dry.log
+          ls -la out/Default/siso_explain* 2>&1 || true
+          for f in out/Default/siso_explain; do [ -f $f ] && { wc -l $f; head -40 $f | cut -c1-400; echo; sed -E 's/^(output|deps for|command line|edge) [^ ]+ ?//; s/[0-9]+(\.[0-9]+)?(ms|µs|s|m|h)//g; s/out:[^ ]+//; s/most recent input [^ ]+/most recent input X/' $f | cut -c1-60 | sort | uniq -c | sort -rn | head -20; cp $f $LOGS/; }; done
+          grep -m5 -n 'need' out/Default/siso.INFO | cut -c1-400 || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: logs-dbg-${{ inputs.os }}
+          path: ~/cbs/logs/
