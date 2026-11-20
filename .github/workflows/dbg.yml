@@ -21,13 +21,13 @@ jobs:
         run: . ci/lib.sh; echo "TAR=$TAR"; $TAR --version | head -1; unpack $W/pack; df -h $W
       - name: Why would it rebuild
         run: |
-          . ci/lib.sh; cd $SRC
+          . ci/lib.sh; cd $SRC; set +e
           xcodebuild -version || true; xcode-select -p || true
-          ls -la out/Default | head -40
+          ls -la out/Default | head -8
           ls -la out/Default/.siso* out/Default/.ninja* 2>&1 || true
           S=out/Default/obj/third_party/jsoncpp/jsoncpp/json_reader.o
           if [ "$(uname)" = Darwin ]; then ST="stat -f %Fm_%N"; else ST="stat -c %.9Y_%n"; fi
-          $ST $S third_party/jsoncpp/source/src/lib_json/json_reader.cpp out/Default/build.ninja out/Default/args.gn out/Default/toolchain.ninja 2>&1
+          $ST $S third_party/jsoncpp/source/src/lib_json/*.cpp base/base_switches.cc out/Default/obj/base/base/base_switches.o build/config/BUILDCONFIG.gn third_party/llvm-build/Release+Asserts/bin/clang out/Default/build.ninja out/Default/args.gn out/Default/toolchain.ninja 2>&1
           third_party/siso/cipd/siso ninja --offline -n -C out/Default chrome > $LOGS/dry.log 2>&1 || true
           grep -E '^noexec:|Build|up-to-date' $LOGS/dry.log
           ls -la out/Default/siso_explain* 2>&1 || true
