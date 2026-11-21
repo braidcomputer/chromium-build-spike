@@ -44,8 +44,10 @@ jobs:
         if: inputs.mode == 'checkout-out'
         run: |
           . ci/lib.sh; du -sh $W/outpack; unpack $W/outpack; du -sh $SRC/out/Default
+      - name: Pin Xcode SDK mtimes (macOS; state must come from a sdkfix build)
+        run: . ci/lib.sh; time pin_sdk_mtimes
       - name: Dry run with fresh-checkout mtimes
-        if: inputs.mode == 'checkout-out'
+        if: inputs.mode == 'checkout-out' && inputs.fix_mtimes == 'false'
         run: ci/incr.sh dry
       - name: Set source mtimes older than outputs
         if: inputs.mode == 'checkout-out' && inputs.fix_mtimes == 'true'
@@ -53,8 +55,6 @@ jobs:
           . ci/lib.sh; cd $SRC/..
           time (find . -path ./src/out -prune -o \( -type f -o -type l \) -print0 | xargs -0 touch -h -t 202001010000)
       # --- common
-      - name: Pin Xcode SDK mtimes (macOS; state must come from a sdkfix build)
-        run: . ci/lib.sh; time pin_sdk_mtimes
       - name: Dry run (expect nothing to do)
         run: ci/incr.sh dry
       - name: No-op build
