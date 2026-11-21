@@ -54,7 +54,7 @@ jobs:
         if: inputs.mode == 'checkout-out' && inputs.fix_mtimes == 'true'
         run: |
           . ci/lib.sh; cd $SRC/..
-          time (find . -path ./src/out -prune -o \( -type f -o -type l \) -print0 | xargs -0 touch -h -t 202001010000)
+          time (find . -path ./src/out -prune -o -print0 | xargs -0 touch -h -t 202001010000)
       # --- common
       - name: Dry run (expect nothing to do)
         run: ci/incr.sh dry
