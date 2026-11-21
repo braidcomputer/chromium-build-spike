@@ -17,6 +17,9 @@ case $WHAT in
   cc) echo "// build-spike touch $(date -u +%FT%TZ)" >> $CC;;
   header) echo "// build-spike touch $(date -u +%FT%TZ)" >> $HDR;;
 esac
+statf(){ if [ "$OSN" = Linux ]; then stat -c '%y %N' "$@"; else stat -f '%Sm %N -> %Y' "$@"; fi; }
+echo "== before $WHAT"; statf out/Default/build.ninja out/Default/toolchain.ninja out/Default/args.gn 2>&1; [ -d out/Default/sdk/xcode_links ] && statf out/Default/sdk/xcode_links/* 2>&1 | head -8
+[ "$OSN" = Darwin ] && xcodebuild -version | tr '\n' ' '
 mon_start; trap mon_stop EXIT
 ts "incr_${WHAT}_begin"
 s=$(date +%s)
@@ -26,5 +29,7 @@ ts "incr_${WHAT}_end rc=$rc"
 echo "RESULT $WHAT rc=$rc secs=$((e-s)) $(grep -E '^noexec:|Build|up-to-date' "$LOGS/incr-$WHAT.log" | tr '\n' ' ')"
 grep -E ' [SF] (LINK|SOLINK|SOLINK_MODULE|ACTION //chrome:|STAMP|COPY).*(chrome|Chromium)' "$LOGS/incr-$WHAT.log" | grep -E 'LINK' | tail -20 | cut -c1-200
 tail -3 "$LOGS/incr-$WHAT.log" | cut -c1-300
+echo "== after $WHAT"; statf out/Default/build.ninja out/Default/toolchain.ninja 2>&1; [ -d out/Default/sdk/xcode_links ] && statf out/Default/sdk/xcode_links/* 2>&1 | head -8
+grep -a -m3 'Regenerating' "$LOGS/incr-$WHAT.log" | cut -c1-200
 save_build_logs "incr-$WHAT" Default
 [ "$rc" = 0 ] || [ "$rc" = 124 ]

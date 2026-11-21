@@ -6,6 +6,7 @@ on:
       state_run: {description: "run id holding the state-<os> artifact", required: true}
       mode: {description: "artifact | checkout-out", required: true, default: artifact}
       rev: {required: false, default: ""}
+      noop_cap: {description: "minutes allowed for the no-op build", required: false, default: "20"}
       header: {description: "also rebuild after a header change (true/false)", required: false, default: "false"}
       fix_mtimes: {description: "checkout-out: set source mtimes old (true/false)", required: false, default: "true"}
       save_out: {description: "save out/ to actions cache (true/false)", required: false, default: "false"}
@@ -58,7 +59,7 @@ jobs:
       - name: Dry run (expect nothing to do)
         run: ci/incr.sh dry
       - name: No-op build
-        run: ci/incr.sh noop 20
+        run: ci/incr.sh noop ${{ inputs.noop_cap }}
       - name: Rebuild after one .cc change
         run: ci/incr.sh cc 300
       - name: Pack out for cache

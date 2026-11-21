@@ -71,6 +71,11 @@ save_build_logs(){ # copy small siso logs for later analysis
     [ -f "$o/$f" ] && cp "$o/$f" "$LOGS/$tag/" || true
   done
   gzip -f "$LOGS/$tag"/siso_localexec 2>/dev/null || true
+  if [ -f "$o/siso_explain" ]; then
+    head -400 "$o/siso_explain" | cut -c1-600 > "$LOGS/$tag/siso_explain.head"
+    echo "EXPLAIN $tag lines=$(wc -l < "$o/siso_explain")"; head -6 "$o/siso_explain" | cut -c1-500
+    sed -E 's/[^ ]+\.(o|pcm|h|cc|a|rlib|dylib|json|py|ninja)//g' "$o/siso_explain" | cut -c1-100 | sort | uniq -c | sort -rn | head -8
+  fi
 }
 pin_sdk_mtimes(){ # macOS: give Xcode SDK/toolchain files one fixed mtime so Siso state stays valid on another runner VM
   [ "$OSN" = Darwin ] || return 0
